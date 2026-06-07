@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mortgage PITI Calculator</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 650px;
+            margin: auto;
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        label {
+            font-weight: bold;
+            display: block;
+            margin-top: 15px;
+        }
+
+        input, select, input[type=range] {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 25px;
+            background: #0078ff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #005fcc;
+        }
+
+        .results {
+            margin-top: 25px;
+            padding: 20px;
+            background: #eef7ff;
+            border-radius: 8px;
+        }
+
+        .results div {
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .note {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .small {
+            font-size: 13px;
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .row > div {
+            flex: 1;
+        }
+
+        @media (max-width: 600px) {
+            .row {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+    <h2>Mortgage PITI Calculator</h2>
+
+    <label>Home Price ($)</label>
+    <input type="number" id="price" placeholder="e.g. 450000">
+
+    <div class="row">
+        <div>
+            <label>State</label>
+            <select id="state">
+                <option value="">Select state</option>
+                <option value="TX">TX</option>
+                <option value="AR">AR</option>
+                <option value="IN">IN</option>
+                <option value="IA">IA</option>
+                <option value="KS">KS</option>
+                <option value="MN">MN</option>
+                <option value="MO">MO</option>
+                <option value="WI">WI</option>
+                <option value="NE">NE</option>
+                <option value="OK">OK</option>
+            </select>
+        </div>
+        <div>
+            <label>ZIP Code</label>
+            <input type="text" id="zip" placeholder="e.g. 75006">
+        </div>
+    </div>
+
+    <label>Down Payment (%)</label>
+    <input type="range" id="downPercent" min="0" max="50" value="20" oninput="updateDownLabel()">
+    <div class="small"><strong>Selected:</strong> <span id="downLabel">20%</span></div>
+
+    <label>Interest Rate (%)</label>
+    <input type="number" id="rate" step="0.01" placeholder="e.g. 6.75">
+
+    <label>Loan Term (Years)</label>
+    <input type="number" id="years" placeholder="e.g. 30">
+
+    <label>Annual Property Taxes ($)</label>
+    <input type="number" id="taxes" placeholder="Leave blank to estimate later">
+    <div class="note">If left blank, this version will treat taxes as 0 for now.</div>
+
+    <label>Annual Home Insurance ($)</label>
+    <input type="number" id="insurance" placeholder="e.g. 1800">
+
+    <button onclick="calculate()">Calculate Payment</button>
+
+    <div class="results" id="results" style="display:none;">
+        <div><strong>Principal & Interest:</strong> $<span id="pi"></span></div>
+        <div><strong>Taxes:</strong> $<span id="tax"></span></div>
+        <div><strong>Insurance:</strong> $<span id="ins"></span></div>
+        <div><strong>PMI:</strong> $<span id="pmi"></span></div>
+        <hr>
+        <div><strong>Total Monthly Payment (PITI + PMI):</strong> $<span id="total"></span></div>
+        <div class="small"><strong>LTV:</strong> <span id="ltvDisplay"></span>%</div>
+    </div>
+</div>
+
+<script>
+function updateDownLabel() {
+    document.getElementById("downLabel").innerText =
+        document.getElementById("downPercent").value + "%";
+}
+
+// Simple PMI rate bands based on LTV
+function getPmiRate(ltvPercent) {
+    if (ltvPercent >= 95) return 0.011;   // 1.10% annual
+    if (ltvPercent >= 90) return 0.007;   // 0.70% annual
+    if (ltvPercent >= 85) return 0.003;   // 0.30% annual
+    return 0;                             // no PMI at <= 80 LTV
+}
+
+function calculate() {
+    let price = parseFloat(document.getElementById("price").value);
+    let downPercent = parseFloat(document.getElementById("downPercent").value);
+    let rate = parseFloat(document.getElementById("rate").value) / 100 / 12;
+    let years = parseFloat(document.getElementById("years").value) * 12;
+    let taxesInput = document.getElementById("taxes").value;
+    let insurance = parseFloat(document.getElementById("insurance").value) || 0;
+
+    if (!price || !rate || !years) {
+        alert("Please enter at least price, rate, and term.");
+        return;
+    }
+
+    let down = price * (downPercent / 100);
+    let loanAmount = price - down;
+    let ltv = (loanAmount / price) * 100;
+
+    // Principal & Interest
+    let PI = (loanAmount * rate) / (1 - Math.pow(1 + rate, -years));
+    PI = isFinite(PI) ? PI : 0;
+
+    // Taxes
+    let annualTaxes = taxesInput ? parseFloat(taxesInput) : 0;
+    let monthlyTaxes = annualTaxes / 12;
+
+    // Insurance
+    let monthlyInsurance = insurance / 12;
+
+    // PMI
+    let pmiRate = getPmiRate(ltv);
+    let monthlyPMI = (ltv > 80 && pmiRate > 0)
+        ? (loanAmount * pmiRate) / 12
+        : 0;
+
+    let total = PI + monthlyTaxes + monthlyInsurance + monthlyPMI;
+
+    document.getElementById("pi").innerText = PI.toFixed(2);
+    document.getElementById("tax").innerText = monthlyTaxes.toFixed(2);
+    document.getElementById("ins").innerText = monthlyInsurance.toFixed(2);
+    document.getElementById("pmi").innerText = monthlyPMI.toFixed(2);
+    document.getElementById("total").innerText = total.toFixed(2);
+    document.getElementById("ltvDisplay").innerText = ltv.toFixed(1);
+
+    document.getElementById("results").style.display = "block";

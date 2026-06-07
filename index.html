@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mortgage Calculator</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f7f7f7;
+            margin: 0;
+            padding: 20px;
+            color: #222;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 28px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 650px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        label {
+            font-weight: bold;
+            display: block;
+            margin-top: 18px;
+            margin-bottom: 6px;
+        }
+
+        select, input {
+            width: 100%;
+            padding: 10px;
+            font-size: 15px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
+
+        .result-box {
+            background: #f0f0f0;
+            padding: 18px;
+            border-radius: 8px;
+            margin-top: 25px;
+        }
+
+        .result-box h2 {
+            margin-top: 0;
+            font-size: 22px;
+            color: #444;
+        }
+
+        .result-line {
+            font-size: 17px;
+            margin: 8px 0;
+        }
+
+        .loan-type-toggle {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .loan-type-toggle button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: #e0e0e0;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: bold;
+        }
+
+        .loan-type-toggle button.active {
+            background: #0078ff;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Mortgage Calculator</h1>
+
+    <div class="container">
+
+        <!-- Loan Type Buttons -->
+        <label>Loan Type</label>
+        <div class="loan-type-toggle">
+            <button id="btnConv" class="active" onclick="setLoanType('conventional')">Conventional</button>
+            <button id="btnFHA" onclick="setLoanType('fha')">FHA</button>
+            <button id="btnVA" onclick="setLoanType('va')">VA</button>
+        </div>
+
+        <!-- State -->
+        <label for="state">State</label>
+        <select id="state">
+            <option value="TX">Texas</option>
+            <option value="FL">Florida</option>
+            <option value="GA">Georgia</option>
+            <option value="NC">North Carolina</option>
+            <option value="SC">South Carolina</option>
+            <option value="TN">Tennessee</option>
+            <option value="AL">Alabama</option>
+            <option value="MS">Mississippi</option>
+            <option value="LA">Louisiana</option>
+            <option value="AR">Arkansas</option>
+        </select>
+
+        <!-- Purchase Price -->
+        <label for="price">Purchase Price</label>
+        <input type="number" id="price" placeholder="300000" />
+
+        <!-- Down Payment -->
+        <label for="down">Down Payment (%)</label>
+        <input type="number" id="down" placeholder="5" />
+
+        <!-- Interest Rate -->
+        <label for="rate">Interest Rate (%)</label>
+        <input type="number" id="rate" placeholder="6.5" />
+
+        <!-- Loan Term -->
+        <label for="term">Loan Term (Years)</label>
+        <input type="number" id="term" placeholder="30" />
+        <!-- Property Tax -->
+        <label for="tax">Property Tax (Annual %)</label>
+        <input type="number" id="tax" placeholder="1.8" />
+
+        <!-- Home Insurance -->
+        <label for="ins">Home Insurance (Annual $)</label>
+        <input type="number" id="ins" placeholder="1800" />
+
+        <!-- HOA -->
+        <label for="hoa">HOA (Monthly $)</label>
+        <input type="number" id="hoa" placeholder="0" />
+
+        <!-- PMI (Conventional only) -->
+        <label for="pmi">PMI (% annually, Conventional only)</label>
+        <input type="number" id="pmi" placeholder="0.55" />
+
+        <button onclick="calculate()" 
+            style="margin-top:20px;width:100%;padding:12px;font-size:17px;
+            background:#0078ff;color:white;border:none;border-radius:6px;cursor:pointer;">
+            Calculate Payment
+        </button>
+
+        <div class="result-box">
+            <h2>Monthly Payment</h2>
+            <div class="result-line" id="resultPITI">PITI: $0</div>
+            <div class="result-line" id="resultBreakdown"></div>
+        </div>
+    </div>
+
+<script>
+let loanType = "conventional";
+
+function setLoanType(type) {
+    loanType = type;
+
+    document.getElementById("btnConv").classList.remove("active");
+    document.getElementById("btnFHA").classList.remove("active");
+    document.getElementById("btnVA").classList.remove("active");
+
+    if (type === "conventional") document.getElementById("btnConv").classList.add("active");
+    if (type === "fha") document.getElementById("btnFHA").classList.add("active");
+    if (type === "va") document.getElementById("btnVA").classList.add("active");
+
+    applyLoanDefaults();
+}
+
+function applyLoanDefaults() {
+    if (loanType === "conventional") {
+        document.getElementById("down").value = 5;
+        document.getElementById("pmi").value = 0.55;
+    }
+    if (loanType === "fha") {
+        document.getElementById("down").value = 3.5;
+        document.getElementById("pmi").value = 0; 
+    }
+    if (loanType === "va") {
+        document.getElementById("down").value = 0;
+        document.getElementById("pmi").value = 0;
+    }
+}
+
+function calculate() {
+    let price = parseFloat(document.getElementById("price").value);
+    let downPct = parseFloat(document.getElementById("down").value) / 100;
+    let rate = parseFloat(document.getElementById("rate").value) / 100 / 12;
+    let term = parseFloat(document.getElementById("term").value) * 12;
+
+    let taxPct = parseFloat(document.getElementById("tax").value) / 100;
+    let insAnnual = parseFloat(document.getElementById("ins").value);
+    let hoa = parseFloat(document.getElementById("hoa").value);
+
+    let pmiPct = parseFloat(document.getElementById("pmi").value) / 100;
+
+    let downPayment = price * downPct;
+    let loanAmount = price - downPayment;
+    // FHA MIP
+    let fhaMipMonthly = 0;
+    if (loanType === "fha") {
+        fhaMipMonthly = (loanAmount * 0.0085) / 12; // 0.85% annual
+    }
+
+    // VA Funding Fee
+    let vaFeeMonthly = 0;
+    if (loanType === "va") {
+        let vaFundingFee = loanAmount * 0.0225; // 2.25%
+        loanAmount += vaFundingFee;
+        vaFeeMonthly = 0;
+    }
+
+    // PMI (Conventional only)
+    let pmiMonthly = 0;
+    if (loanType === "conventional" && downPct < 0.20) {
+        pmiMonthly = (loanAmount * pmiPct) / 12;
+    }
+
+    // P&I
+    let monthlyPI = (loanAmount * rate) / (1 - Math.pow(1 + rate, -term));
+
+    // Taxes
+    let monthlyTax = (price * taxPct) / 12;
+
+    // Insurance
+    let monthlyIns = insAnnual / 12;
+
+    // HOA
+    let monthlyHOA = hoa;
+
+    // Total PITI
+    let piti = monthlyPI + monthlyTax + monthlyIns + monthlyHOA + pmiMonthly + fhaMipMonthly + vaFeeMonthly;
+
+    document.getElementById("resultPITI").innerHTML = "PITI: $" + piti.toFixed(2);
+
+    document.getElementById("resultBreakdown").innerHTML = 
+        "P&I: $" + monthlyPI.toFixed(2) +
+        "<br>Taxes: $" + monthlyTax.toFixed(2) +
+        "<br>Insurance: $" + monthlyIns.toFixed(2) +
+        "<br>HOA: $" + monthlyHOA.toFixed(2) +
+        "<br>PMI: $" + pmiMonthly.toFixed(2) +
+        "<br>FHA MIP: $" + fhaMipMonthly.toFixed(2) +
+        "<br>VA Fee: $" + vaFeeMonthly.toFixed(2);
+}
+</script>
+
+</body>
+</html>
